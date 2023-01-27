@@ -81,7 +81,7 @@ impl Supervisor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio;
+    
     use tokio::sync::mpsc::channel;
     use std::env;
 
@@ -110,7 +110,7 @@ mod tests {
 
         tokio::spawn(async move {
             tx.send((
-                peer_ids.get(0).unwrap().clone(),
+                *peer_ids.get(0).unwrap(),
                 Commands::IpTables(crate::commands::IpTablesCommands::Get)
             )).await.unwrap();
         });

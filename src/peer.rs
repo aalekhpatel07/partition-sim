@@ -18,7 +18,7 @@ impl Peer {
     pub fn new(addr: IpAddr, hostname: &str, user: Option<&str>, keyfile: Option<&str>) -> Self {
         Self {
             id: Uuid::new_v4(),
-            ip_addr: addr.into(),
+            ip_addr: addr,
             hostname: hostname.to_string(),
             session: None,
             user: user.unwrap_or("root").to_string(),
@@ -50,7 +50,7 @@ impl Peer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio;
+    
     use std::env;
 
     #[tokio::test]
