@@ -1,9 +1,8 @@
-mod ip;
 mod fs;
+mod ip;
 
-pub use ip::IpTablesCommands;
 pub use fs::FsCommands;
-
+pub use ip::IpTablesCommands;
 
 /// A command should be able to build itself into an `openssh::Command`, given
 /// an `openssh::Session`.
@@ -11,7 +10,6 @@ pub trait Command {
     /// Build the command.
     fn build<'session>(&self, session: &'session openssh::Session) -> openssh::Command<'session>;
 }
-
 
 /// A wrapper around all commands.
 #[derive(Debug, Clone, PartialEq, Eq)]

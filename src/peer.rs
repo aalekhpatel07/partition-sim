@@ -1,7 +1,6 @@
-use uuid::Uuid;
-use std::net::IpAddr;
 use openssh::{Session, SessionBuilder};
-
+use std::net::IpAddr;
+use uuid::Uuid;
 
 #[derive(Debug)]
 pub struct Peer {
@@ -12,7 +11,6 @@ pub struct Peer {
     pub user: String,
     pub keyfile: Option<String>,
 }
-
 
 impl Peer {
     pub fn new(addr: IpAddr, hostname: &str, user: Option<&str>, keyfile: Option<&str>) -> Self {
@@ -28,12 +26,12 @@ impl Peer {
 
     pub async fn connect(&mut self) -> crate::Result<()> {
         if self.session.is_some() {
-            return Ok(())
+            return Ok(());
         }
         let mut session_builder = SessionBuilder::default();
         session_builder
-        .known_hosts_check(openssh::KnownHosts::Accept)
-        .user(self.user.clone());
+            .known_hosts_check(openssh::KnownHosts::Accept)
+            .user(self.user.clone());
 
         if let Some(keyfile) = &self.keyfile {
             session_builder.keyfile(std::path::PathBuf::from(keyfile.to_owned()));
@@ -43,23 +41,21 @@ impl Peer {
 
         Ok(())
     }
-
 }
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     use std::env;
 
     #[tokio::test]
     async fn test_peer_new() {
         let mut peer = Peer::new(
-            "192.168.1.137".parse().unwrap(), 
-            "pi", 
+            "192.168.1.137".parse().unwrap(),
+            "pi",
             Some("pi"),
-            Some(env::var("SSH_KEYFILE").unwrap().as_str())
+            Some(env::var("SSH_KEYFILE").unwrap().as_str()),
         );
         peer.connect().await.unwrap();
         println!("{:?}", peer);

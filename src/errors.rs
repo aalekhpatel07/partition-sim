@@ -1,6 +1,5 @@
 use thiserror::Error;
 
-
 #[derive(Error, Debug)]
 pub enum PartitionSimError {
     #[error("openssh Error: {0}")]

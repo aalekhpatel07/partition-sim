@@ -1,15 +1,13 @@
 use super::Command;
 
-
 /// Some file-system related commands for debugging/testing
 /// purposes so that we don't have to run `iptables` commands
 /// which are potentially destructive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FsCommands {
     /// List the contents of the current directory.
-    Ls
+    Ls,
 }
-
 
 impl Command for FsCommands {
     fn build<'session>(&self, session: &'session openssh::Session) -> openssh::Command<'session> {
