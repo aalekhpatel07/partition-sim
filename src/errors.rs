@@ -10,4 +10,8 @@ pub enum PartitionSimError {
     PeerNotFound(uuid::Uuid),
     #[error("Command on the remote exited with a bad status code: {0}")]
     CommandFailed(i32),
+    #[error("IO Error: {0}")]
+    IoError(#[from] std::io::Error),
+    #[error("Consul related error: {0}")]
+    ConsulError(String),
 }

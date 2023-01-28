@@ -1,0 +1,22 @@
+version: "3"
+
+services:
+  consul:
+    image: consul
+    command: agent -server -ui -node=server-main -bootstrap-expect=1 -client=0.0.0.0
+    ports:
+      - "8500:8500"
+      - "8600:8600/udp"
+  test-node:
+    image: test-node-base
+    command: --name test-node-base --port 9001
+    scale: 5
+    depends_on:
+      - consul
+#  consul-client:
+#    image: consul
+#    command: agent -node=client-1 -retry-join="consul-server" -client=0.0.0.0
+#    depends_on:
+#      - consul-server
+  counting-service:
+    image: hashicorp/counting-service:0.0.2
