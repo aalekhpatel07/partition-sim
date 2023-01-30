@@ -5,36 +5,33 @@ services:
     image: consul
     command: agent -server -ui -node=server-main -bootstrap-expect=1 -client=0.0.0.0
     ports:
-      - "8500:8500"
-      - "8600:8600/udp"
+      - "8500:8500" # The consul UI.
+      - "8600:8600/udp" # for DNS queries.
   test-node:
     build:
       context: .
       dockerfile: docker/test-node.Dockerfile
     image: test-node
     environment:
-      - RUST_LOG=client=debug
-      - CONSUL_ADDR=consul
-    scale: 5
+      - RUST_LOG=client=debug # This is an example client that only accepts health checks.
+      - CONSUL_ADDR=consul # This is important for `register_service.py` to reach consul.
+    scale: 5 # Choose the size for your cluster.
     depends_on:
       - consul
       - test-supervisor
     cap_add:
-      - NET_ADMIN
+      - NET_ADMIN # We can't do funny business with iptables without extra privileges.
   test-supervisor:
     image: test-supervisor
     build:
       context: .
       dockerfile: docker/test-supervisor.Dockerfile
+    ports:
+      - "3000:3000" # The supervisor's HTTP API.
     depends_on:
       - consul
     environment:
       - RUST_LOG=supervisor=debug,partition-sim=debug
       - CONSUL_ADDR=consul
-    volumes:
-      - supervisor:/app
     cap_add:
       - NET_ADMIN
-
-volumes:
-  supervisor:
