@@ -18,31 +18,40 @@ pub struct Supervisor {
 pub type Message = (Uuid, Commands);
 pub type Request<I, O> = (I, tokio::sync::oneshot::Sender<O>);
 
-
 impl Supervisor {
     pub fn get_peer_ids(&self) -> &[Uuid] {
         &self.peer_ids
     }
     pub fn get_peer(&self, peer_id: Uuid) -> crate::Result<&Peer> {
-        self.peers.get(&peer_id).ok_or(crate::Error::PeerNotFound(peer_id))
+        self.peers
+            .get(&peer_id)
+            .ok_or(crate::Error::PeerNotFound(peer_id))
     }
     pub fn get_peer_mut(&mut self, peer_id: Uuid) -> crate::Result<&mut Peer> {
-        self.peers.get_mut(&peer_id).ok_or(crate::Error::PeerNotFound(peer_id))
-
+        self.peers
+            .get_mut(&peer_id)
+            .ok_or(crate::Error::PeerNotFound(peer_id))
     }
 
     fn copy_id(&self, peer_id: Uuid) -> crate::Result<()> {
         let peer = self.peers.get(&peer_id).unwrap();
-        let mut command = SshCommands::CopyId { 
-            ip_addr: peer.ip_addr, 
-            path_to_key: self.path_to_key.clone()
-        }.build();
+        let mut command = SshCommands::CopyId {
+            ip_addr: peer.ip_addr,
+            path_to_key: self.path_to_key.clone(),
+        }
+        .build();
 
         let output = command.output()?;
-        tracing::info!("sshpass stdout: {}", String::from_utf8(output.stdout).unwrap());
+        tracing::info!(
+            "sshpass stdout: {}",
+            String::from_utf8(output.stdout).unwrap()
+        );
 
         if !output.status.success() {
-            tracing::error!("sshpass stderr: {}", String::from_utf8(output.stderr).unwrap());
+            tracing::error!(
+                "sshpass stderr: {}",
+                String::from_utf8(output.stderr).unwrap()
+            );
             return Err(crate::Error::SshCopyIdFailed);
         }
         Ok(())
@@ -65,11 +74,11 @@ impl Supervisor {
 
         let home = var("HOME").unwrap_or_else(|_| "/root".into());
         let path_to_key = format!("{}/.ssh/id_ed25519.pub", home);
-        
+
         Self {
             peers: hmap,
             peer_ids,
-            path_to_key
+            path_to_key,
         }
     }
 
@@ -101,13 +110,20 @@ impl Supervisor {
             .ok_or(crate::errors::PartitionSimError::SessionUninitialized)
     }
 
-    pub async fn execute(&mut self, peer_id: Uuid, command: impl Into<Commands>) -> crate::Result<Output> {
+    pub async fn execute(
+        &mut self,
+        peer_id: Uuid,
+        command: impl Into<Commands>,
+    ) -> crate::Result<Output> {
         self.connect(peer_id).await?;
         let session = self.get_session(peer_id)?;
         Ok(command.into().build(session).output().await?)
     }
 
-    pub async fn run(mut self, mut commands_rx: Receiver<Request<Message, Output>>) -> crate::Result<()> {
+    pub async fn run(
+        mut self,
+        mut commands_rx: Receiver<Request<Message, Output>>,
+    ) -> crate::Result<()> {
         while let Some((msg, result_tx)) = commands_rx.recv().await {
             let (peer_id, command) = msg;
             self.connect(peer_id).await?;
@@ -166,6 +182,5 @@ mod tests {
         });
         let t3 = supervisor.run(rx);
         let _ = tokio::join!(t1, t2, t3);
-
     }
 }

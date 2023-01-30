@@ -1,6 +1,6 @@
 use std::process::Output;
 
-use axum::{response::IntoResponse, http::StatusCode};
+use axum::{http::StatusCode, response::IntoResponse};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -23,7 +23,9 @@ pub enum PartitionSimError {
     Other(String),
     #[error("Couldn't parse Uuid: {0}")]
     UuidParseError(#[from] uuid::Error),
-    #[error("Command failed (with output): (status: {status_code}, stderr: {stderr}, stdout: {stdout})")]
+    #[error(
+        "Command failed (with output): (status: {status_code}, stderr: {stderr}, stdout: {stdout})"
+    )]
     CommandFailedWithOutput {
         status_code: i32,
         stderr: String,
@@ -43,9 +45,7 @@ impl From<Output> for PartitionSimError {
     }
 }
 
-
 impl IntoResponse for PartitionSimError {
-
     fn into_response(self) -> axum::response::Response {
         let msg = format!("{}", self);
         (StatusCode::INTERNAL_SERVER_ERROR, msg).into_response()

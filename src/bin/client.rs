@@ -1,18 +1,12 @@
 use std::net::SocketAddr;
 
-
-use axum::{
-    routing::{get},
-    http::StatusCode,
-    Router,
-};
+use axum::{http::StatusCode, routing::get, Router};
 use clap::Parser;
 
 #[derive(Parser)]
 pub struct Args {
     #[clap(short, long, default_value = "9001")]
     port: u16,
-
 }
 
 #[tokio::main]
@@ -20,11 +14,13 @@ pub async fn main() {
     tracing_subscriber::fmt::init();
     let args = Args::parse();
 
-    let app = Router::new()
-        .route("/health", get(|| async { 
+    let app = Router::new().route(
+        "/health",
+        get(|| async {
             tracing::debug!("[OK] healthcheck");
-            StatusCode::OK 
-        }));
+            StatusCode::OK
+        }),
+    );
 
     let addr = SocketAddr::from(([0, 0, 0, 0], args.port));
     tracing::info!("Listening on {}", addr);
@@ -34,8 +30,5 @@ pub async fn main() {
         .unwrap();
 }
 
-
 #[cfg(test)]
-mod tests {
-
-}
+mod tests {}

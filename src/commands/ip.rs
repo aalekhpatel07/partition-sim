@@ -18,13 +18,11 @@ pub enum IpTablesCommands {
     Get,
 }
 
-
 impl From<IpTablesCommands> for Commands {
     fn from(command: IpTablesCommands) -> Self {
         Self::IpTables(command)
     }
 }
-
 
 impl super::Command for IpTablesCommands {
     fn build<'session>(&self, session: &'session openssh::Session) -> openssh::Command<'session> {
