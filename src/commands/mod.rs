@@ -1,8 +1,10 @@
 mod fs;
 mod ip;
+mod ssh;
 
 pub use fs::FsCommands;
 pub use ip::IpTablesCommands;
+pub use ssh::SshCommands;
 
 /// A command should be able to build itself into an `openssh::Command`, given
 /// an `openssh::Session`.

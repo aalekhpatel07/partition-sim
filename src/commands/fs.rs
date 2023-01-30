@@ -1,4 +1,4 @@
-use super::Command;
+use super::{Command, Commands};
 
 /// Some file-system related commands for debugging/testing
 /// purposes so that we don't have to run `iptables` commands
@@ -7,6 +7,12 @@ use super::Command;
 pub enum FsCommands {
     /// List the contents of the current directory.
     Ls,
+}
+
+impl From<FsCommands> for Commands {
+    fn from(command: FsCommands) -> Self {
+        Self::Fs(command)
+    }
 }
 
 impl Command for FsCommands {

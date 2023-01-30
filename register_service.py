@@ -5,6 +5,8 @@ import requests
 import argparse
 import socket
 from pprint import pprint
+import os
+
 
 def my_local_ip():
     return socket.gethostbyname(socket.getfqdn())
@@ -15,7 +17,7 @@ def parse_args():
     parser.add_argument(
         "--consul-base-url",
         type=str,
-        default="http://consul:8500",
+        default=f'http://{os.getenv("CONSUL_ADDR", "127.0.0.1")}:8500',
         help="Base URL (without trailing slash) for the Consul HTTP API"
     )
     parser.add_argument(
@@ -46,7 +48,7 @@ def main():
     for port in args.port:
         output = register_service(
             name=args.name,
-            id=f"{args.name}-{str(uuid.uuid4())}",
+            id=f"{args.name}-{str(args.address)}-{str(port)}",
             port=port,
             address=args.address,
             base_url=args.consul_base_url
@@ -66,6 +68,11 @@ def register_service(
         "ID": id,
         "Port": port,
         "Address": address,
+        "Check": {
+            "DeregisterCriticalServiceAfter": "15s",
+            "HTTP": f"http://{address}:{port}/health",
+            "Interval": "10s"
+        },
         "Meta": {
             "raft-infra-test-node": "true"
         }

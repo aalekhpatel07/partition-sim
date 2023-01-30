@@ -6,18 +6,18 @@ use uuid::Uuid;
 pub struct Peer {
     pub id: Uuid,
     pub ip_addr: IpAddr,
-    pub hostname: String,
+    // pub hostname: String,
     pub session: Option<Session>,
     pub user: String,
     pub keyfile: Option<String>,
 }
 
 impl Peer {
-    pub fn new(addr: IpAddr, hostname: &str, user: Option<&str>, keyfile: Option<&str>) -> Self {
+    pub fn new(addr: IpAddr, user: Option<&str>, keyfile: Option<&str>) -> Self {
         Self {
             id: Uuid::new_v4(),
             ip_addr: addr,
-            hostname: hostname.to_string(),
+            // hostname: hostname.to_string(),
             session: None,
             user: user.unwrap_or("root").to_string(),
             keyfile: keyfile.map(|s| s.to_string()),
@@ -31,6 +31,7 @@ impl Peer {
         let mut session_builder = SessionBuilder::default();
         session_builder
             .known_hosts_check(openssh::KnownHosts::Accept)
+            .user_known_hosts_file("/dev/null")
             .user(self.user.clone());
 
         if let Some(keyfile) = &self.keyfile {
@@ -53,7 +54,6 @@ mod tests {
     async fn test_peer_new() {
         let mut peer = Peer::new(
             "192.168.1.137".parse().unwrap(),
-            "pi",
             Some("pi"),
             Some(env::var("SSH_KEYFILE").unwrap().as_str()),
         );

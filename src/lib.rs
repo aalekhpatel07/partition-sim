@@ -8,4 +8,4 @@ pub type Error = errors::PartitionSimError;
 
 pub use peer::*;
 pub use supervisor::*;
-mod consul;
+pub mod consul;

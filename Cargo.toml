@@ -17,3 +17,4 @@ axum = { version = "0.6.4", features = ["http2", "headers", "macros"] }
 axum-macros = "0.3.2"
 local-ip-address = "0.5.1"
 serde_json = "1.0.91"
+clap = { version = "4.1.4", features = ["derive"] }

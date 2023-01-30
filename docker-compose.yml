@@ -8,15 +8,27 @@ services:
       - "8500:8500"
       - "8600:8600/udp"
   test-node:
-    image: test-node-base
-    command: --name test-node-base --port 9001
+    image: test-node
+    environment:
+      - RUST_LOG=client=debug
+      - CONSUL_ADDR=consul
     scale: 5
     depends_on:
       - consul
-#  consul-client:
-#    image: consul
-#    command: agent -node=client-1 -retry-join="consul-server" -client=0.0.0.0
-#    depends_on:
-#      - consul-server
-  counting-service:
-    image: hashicorp/counting-service:0.0.2
+      - test-supervisor
+    cap_add:
+      - NET_ADMIN
+  test-supervisor:
+    image: test-supervisor
+    depends_on:
+      - consul
+    environment:
+      - RUST_LOG=supervisor=debug,partition-sim=debug
+      - CONSUL_ADDR=consul
+    volumes:
+      - supervisor:/app
+    cap_add:
+      - NET_ADMIN
+
+volumes:
+  supervisor:

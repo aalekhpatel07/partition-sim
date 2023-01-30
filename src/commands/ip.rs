@@ -1,5 +1,7 @@
 use std::net::IpAddr;
 
+use super::Commands;
+
 /// All Iptables commands require root privileges
 /// so we'll run them with `sudo` assuming that the user
 /// has sudo access. We'll fail otherwise.
@@ -14,6 +16,14 @@ pub enum IpTablesCommands {
     /// List all rules.
     Get,
 }
+
+
+impl From<IpTablesCommands> for Commands {
+    fn from(command: IpTablesCommands) -> Self {
+        Self::IpTables(command)
+    }
+}
+
 
 impl super::Command for IpTablesCommands {
     fn build<'session>(&self, session: &'session openssh::Session) -> openssh::Command<'session> {
