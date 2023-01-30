@@ -7,13 +7,14 @@ use super::Commands;
 /// has sudo access. We'll fail otherwise.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IpTablesCommands {
-    /// Flush all rules.
+    /// Flush all rules across all the peers so that all nodes
+    /// can communicate with each other.
     Restore,
-    /// Remove all outbound rules for a given source IP.
+    /// Remove all inbound rules in the target node for a given source IP.
     RestoreFrom { source_ip: IpAddr },
-    /// Add a rule to drop all outbound traffic from a given source IP.
+    /// Add a rule to drop all inbound traffic into the target node originating from a given source IP.
     DropFrom { source_ip: IpAddr },
-    /// List all rules.
+    /// List all inbound rules in the target node.
     Get,
 }
 
@@ -38,7 +39,7 @@ impl super::Command for IpTablesCommands {
                 let mut command = session.raw_command("sudo");
                 command.arg("/usr/sbin/iptables");
                 command.arg("-D");
-                command.arg("OUTPUT");
+                command.arg("INPUT");
                 command.arg("-s");
                 command.arg(source_ip.to_string());
                 command.arg("-j");
@@ -49,7 +50,7 @@ impl super::Command for IpTablesCommands {
                 let mut command = session.raw_command("sudo");
                 command.arg("/usr/sbin/iptables");
                 command.arg("-A");
-                command.arg("OUTPUT");
+                command.arg("INPUT");
                 command.arg("-s");
                 command.arg(source_ip.to_string());
                 command.arg("-j");
@@ -60,7 +61,7 @@ impl super::Command for IpTablesCommands {
                 let mut command = session.raw_command("sudo");
                 command.arg("/usr/sbin/iptables");
                 command.arg("-L");
-                command.arg("OUTPUT");
+                command.arg("INPUT");
                 command.arg("-n");
                 command
             }

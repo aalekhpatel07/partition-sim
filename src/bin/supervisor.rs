@@ -72,7 +72,6 @@ pub async fn main() {
         .route("/api/v1/rules/:peer_id", get(partition_api::rules))
         .route("/api/v1/restore", get(partition_api::restore))
         .route("/api/v1/load_cluster", post(cluster_api::load_cluster))
-        .route("/api/v1/ls/:peer_id", get(test_api::ls_peer))
         .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], args.port));
@@ -83,31 +82,15 @@ pub async fn main() {
         .unwrap();
 }
 
-mod test_api {
-    use super::*;
-    #[axum_macros::debug_handler]
-    pub async fn ls_peer(
-        Path(peer_id): Path<String>,
-        State(state): State<SharedState>
-    ) -> partition_sim::Result<String> {
-        let peer_id = Uuid::parse_str(&peer_id)?;
-        let mut guard = state.lock().await;
-        guard.supervisor.connect(peer_id).await?;
-
-        let result = guard.supervisor.execute(peer_id, partition_sim::commands::FsCommands::Ls).await?;
-
-        let stdout = String::from_utf8_lossy(&result.stdout);
-        Ok(stdout.to_string())
-    }
-}
-
 mod cluster_api {
+    use std::{collections::HashMap, net::IpAddr};
+
     use super::*;
 
     #[axum_macros::debug_handler]
     pub async fn load_cluster(
         State(state): State<SharedState>
-    ) -> partition_sim::Result<Json<Vec<String>>> {
+    ) -> partition_sim::Result<Json<HashMap<String, IpAddr>>> {
 
         tracing::debug!("load_cluster: {:?}", state);
         let mut guard = state.lock().await;
@@ -129,13 +112,17 @@ mod cluster_api {
                 |p| Peer::new(p.0, Some("root"), Some(&priv_path))
             ).collect();
 
-            tracing::info!("found {} peers: {:?}", peers.len(), peers);
+            tracing::info!("Loaded {} peers: {:?}", peers.len(), peers);
 
             guard.supervisor = Supervisor::new(peers).with_key(&pub_path);
 
             guard.supervisor.set_up_ssh()?;
             let peer_id_strings: Vec<_> = guard.supervisor.get_peer_ids().to_vec().into_iter().map(|v| v.to_string()).collect();
-            Ok(peer_id_strings.into())
+            let mut hmap = std::collections::HashMap::new();
+            for peer_id in peer_id_strings.iter() {
+                hmap.insert(peer_id.clone(), guard.supervisor.get_peer(Uuid::parse_str(peer_id)?)?.ip_addr);
+            }
+            Ok(hmap.into())
         }
         else {
             Err(partition_sim::Error::Other("Failed to load cluster".into()))
@@ -146,11 +133,10 @@ mod cluster_api {
 
 /// The Partition API as described in [this paper].
 /// 
+/// 
 /// [stuff]: https://www.scs.stanford.edu/14au-cs244b/labs/projects/RaftMonkey-Chakoumakos-Trusheim-revised.pdf
 mod partition_api {
-    use axum::{
-        extract::Path,
-    };
+    use axum::extract::Path;
     use super::*;
 
     /// Partition the network between two peers.
@@ -175,6 +161,13 @@ mod partition_api {
         ).await?;
 
         if output.status.success() {
+            tracing::debug!(
+                "Partitioned {0} (ip: {2}) from {1} (ip: {3}) so that {2} can't reach {3}.",
+                source_peer_id, 
+                target_peer_id,
+                ip_addr,
+                guard.supervisor.get_peer(target_peer_id)?.ip_addr
+            );
             Ok(String::from_utf8_lossy(&output.stdout).to_string())
         }
         else {
@@ -183,7 +176,7 @@ mod partition_api {
     }
 
     /// Heal the network between two peers.
-    /// Ask the target peer to delete all "drop" rules for packets coming from the source peer.
+    /// Ask the target peer to delete "drop all incoming packets" rules from the source peer.
     pub async fn heal(
         Path(path): Path<(String, String)>,
         State(state): State<SharedState>
@@ -204,6 +197,13 @@ mod partition_api {
         ).await?;
 
         if output.status.success() {
+            tracing::debug!(
+                "Healed the connection of {0} (ip: {2}) from {1} (ip: {3}) so that {2} can reach {3}.",
+                source_peer_id, 
+                target_peer_id,
+                ip_addr,
+                guard.supervisor.get_peer(target_peer_id)?.ip_addr
+            );
             Ok(String::from_utf8_lossy(&output.stdout).to_string())
         }
         else {
@@ -227,6 +227,11 @@ mod partition_api {
         ).await?;
 
         if output.status.success() {
+            tracing::debug!(
+                "Retrieved INPUT iptables rules for {0} (ip: {1}).",
+                source_peer_id, 
+                guard.supervisor.get_peer(source_peer_id)?.ip_addr,
+            );
             Ok(String::from_utf8_lossy(&output.stdout).to_string())
         }
         else {
@@ -245,10 +250,7 @@ mod partition_api {
         for peer_id in peer_ids {
             guard.supervisor.execute(peer_id, partition_sim::commands::IpTablesCommands::Restore).await?;
         }
+        tracing::debug!("Restored all the iptables rules. Network should be healthy now.");
         Ok(())
     }
 }
-
-
-
-
