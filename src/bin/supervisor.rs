@@ -1,18 +1,16 @@
 use std::{net::SocketAddr, sync::{Arc}};
-use serde_json::json;
+
 use tokio::sync::{Mutex};
 use partition_sim::{
     Peer,
     Supervisor,
-    consul::query_consul_for_peers, commands::Commands,
+    consul::query_consul_for_peers,
 };
-use tokio;
+
 use axum::{
     routing::{get, post},
     http::StatusCode,
-    response::IntoResponse,
     Router,
-    extract::Path,
     extract::State, Json,
 };
 use clap::Parser;
@@ -39,7 +37,7 @@ impl AppState {
     pub fn new(
         supervisor: Supervisor, 
     ) -> Self {
-        let consul_addr = std::env::var("CONSUL_ADDR").unwrap_or("127.0.0.1".into());
+        let consul_addr = std::env::var("CONSUL_ADDR").unwrap_or_else(|_| "127.0.0.1".into());
         Self {
             supervisor,
             consul_addr,
@@ -95,7 +93,7 @@ mod cluster_api {
         tracing::debug!("load_cluster: {:?}", state);
         let mut guard = state.lock().await;
 
-        let home = var("HOME").unwrap_or("/root".into());
+        let home = var("HOME").unwrap_or_else(|_| "/root".into());
         let pub_path = format!("{}/.ssh/id_ed25519.pub", home);
         let priv_path = format!("{}/.ssh/id_ed25519", home);
 
@@ -104,7 +102,9 @@ mod cluster_api {
             guard.consul_port, 
             &guard.service_name
         ) {
-            peers.first().map(|p| guard.peer_port = p.1);
+            if let Some(first) = peers.first() {
+                guard.peer_port = first.1;
+            }
             let peers: Vec<_> = 
             peers
             .into_iter()
@@ -115,9 +115,8 @@ mod cluster_api {
             tracing::info!("Loaded {} peers: {:?}", peers.len(), peers);
 
             guard.supervisor = Supervisor::new(peers).with_key(&pub_path);
-
             guard.supervisor.set_up_ssh()?;
-            let peer_id_strings: Vec<_> = guard.supervisor.get_peer_ids().to_vec().into_iter().map(|v| v.to_string()).collect();
+            let peer_id_strings: Vec<_> = guard.supervisor.get_peer_ids().iter().copied().map(|v| v.to_string()).collect();
             let mut hmap = std::collections::HashMap::new();
             for peer_id in peer_id_strings.iter() {
                 hmap.insert(peer_id.clone(), guard.supervisor.get_peer(Uuid::parse_str(peer_id)?)?.ip_addr);
@@ -151,7 +150,7 @@ mod partition_api {
         let mut guard = state.lock().await;
 
         let source_peer = guard.supervisor.get_peer(source_peer_id)?;
-        let ip_addr = source_peer.ip_addr.clone();
+        let ip_addr = source_peer.ip_addr;
         
         let output = guard
         .supervisor
@@ -187,7 +186,7 @@ mod partition_api {
         let mut guard = state.lock().await;
 
         let source_peer = guard.supervisor.get_peer(source_peer_id)?;
-        let ip_addr = source_peer.ip_addr.clone();
+        let ip_addr = source_peer.ip_addr;
         
         let output = guard
         .supervisor

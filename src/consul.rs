@@ -43,8 +43,8 @@ pub fn query_consul_for_peers(
     let dns_names = 
     dns_names_and_ports
     .iter()
-    .map(|(dns_name, _)| {
-        dns_name.clone()
+    .map(|&(dns_name, _)| {
+        dns_name
     })
     .collect::<Vec<_>>();
 
@@ -63,7 +63,7 @@ pub fn query_consul_for_peers(
         output
         .lines()
         .map(|line| {
-            format!("{}", line)
+            line.to_string()
         })
         .zip(
             dns_names_and_ports

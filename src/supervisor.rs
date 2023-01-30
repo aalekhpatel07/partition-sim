@@ -63,7 +63,7 @@ impl Supervisor {
             .map(|peer| (peer.id, peer))
             .collect::<HashMap<_, _>>();
 
-        let home = var("HOME").unwrap_or("/root".into());
+        let home = var("HOME").unwrap_or_else(|_| "/root".into());
         let path_to_key = format!("{}/.ssh/id_ed25519.pub", home);
         
         Self {
