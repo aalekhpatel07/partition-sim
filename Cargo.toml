@@ -9,7 +9,7 @@ readme = "README.md"
 homepage = "https://github.com/aalekhpatel07/partition-sim"
 repository = "https://github.com/aalekhpatel07/partition-sim"
 keywords = ["network-partition", "partition", "simulator", "distributed-systems", "testing"]
-categories = ["development-tools::testing", "simulation"]
+categories = ["development-tools::testing", "simulation", "web-programming::http-server"]
 default-run = "supervisor"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
