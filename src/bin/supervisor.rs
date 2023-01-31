@@ -69,6 +69,7 @@ pub async fn main() {
         .route("/api/v1/rules/:peer_id", get(partition_api::rules))
         .route("/api/v1/restore", get(partition_api::restore))
         .route("/api/v1/load_cluster", post(cluster_api::load_cluster))
+        .route("/api/v1/ls/:peer_id", get(test_api::ls))
         .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], args.port));
@@ -77,6 +78,24 @@ pub async fn main() {
         .serve(app.into_make_service())
         .await
         .unwrap();
+}
+
+mod test_api {
+    use super::*;
+    use axum_macros;
+    use axum::extract::Path;
+
+    #[axum_macros::debug_handler]
+    pub async fn ls(
+        Path(path): Path<String>,
+        State(state): State<SharedState>
+    ) -> partition_sim::Result<String> {
+        let source_peer_id =
+            Uuid::parse_str(&path).map_err(partition_sim::Error::UuidParseError)?;
+        let mut guard = state.lock().await;
+        let output = guard.supervisor.execute(source_peer_id, partition_sim::commands::FsCommands::Ls).await?;
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    }
 }
 
 mod cluster_api {
