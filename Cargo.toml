@@ -1,7 +1,16 @@
 [package]
 name = "partition-sim"
+description = "Simulate network partitions in a docker cluster."
 version = "0.1.0"
 edition = "2021"
+authors = ["Aalekh Patel <aalekh.gwpeck.7998@icloud.com>"]
+license-file = "LICENSE.md"
+readme = "README.md"
+homepage = "https://github.com/aalekhpatel07/partition-sim"
+repository = "https://github.com/aalekhpatel07/partition-sim"
+keywords = ["network-partition", "partition", "simulator", "distributed-systems", "testing"]
+categories = ["development-tools::testing", "simulation"]
+default-run = "supervisor"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
