@@ -1,0 +1,202 @@
+openapi: 3.0.0
+info:
+  title: The (extended) Partition API.
+  description: |
+    Simulate network partitions amongst a cluster of nodes.
+  version: 0.1.0
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Development
+paths:
+  /health:
+    summary: "Healthcheck for the test supervisor node."
+    description: "Healthcheck for the test supervisor node."
+    get:
+      tags: 
+        - "healthcheck"
+      summary: "Gets the health status of the test supervisor node."
+      description: "Gets the health status of the test supervisor node."
+      responses:
+        "200":
+          description: "Supervisor is healthy and functioning normally."
+  /partition/{sourcePeerId}/{targetPeerId}:
+    parameters:
+      - $ref: "#/components/parameters/sourcePeerId"
+      - $ref: "#/components/parameters/targetPeerId"
+    post:
+      summary: "Instruct the target node to drop any incoming packets from the source node."
+      description: "Configure the iptables rules on the target node to drop any incoming packets from the source node."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: string
+      tags:
+        - "partition api"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/partition"
+        "502":
+          description: "Partition Error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/partitionError"
+  /heal/{sourcePeerId}/{targetPeerId}:
+    parameters:
+      - $ref: "#/components/parameters/sourcePeerId"
+      - $ref: "#/components/parameters/targetPeerId"
+    post:
+      summary: "Instruct the target node to allow any incoming packets from the source node."
+      description: "Configure the iptables rules on the target node to allow any incoming packets from the source node."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: string
+      tags:
+        - "partition api"
+      responses:
+        "200":
+          description: "Healed the network partition between the nodes successfully."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/heal"
+        "502":
+          description: "Partition Error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/partitionError"
+  /restore:
+    get:
+      summary: "Restore the cluster back to a healthy state."
+      description: "Configure the iptables rules on all nodes to allow traffic from anywhere in the cluster."
+      tags:
+        - "partition api"
+      responses:
+        "200":
+          description: "Cluster restored successfully."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/restore"
+        "502":
+          description: "Partition Error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/partitionError"
+  /rules/{targetPeerId}:
+    parameters:
+      - $ref: "#/components/parameters/targetPeerId"
+    get:
+      summary: "Get the currently configured rules on the node with the given id."
+      description: "Get the rules configured for the node with the given id."
+      tags:
+        - "partition api"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/rules"
+        "502":
+          description: "Partition Error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/partitionError"
+  /load_cluster:
+    get:
+      summary: "Load the cluster info into supervisor state."
+      description: "Refresh the cluster info based on a consul query to other nodes."
+      tags:
+        - "cluster api"
+      responses:
+        "200":
+          description: "Cluster loaded successfully."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/loadCluster"
+        "502":
+          description: "Partition Error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/partitionError"
+  /cluster:
+    get:
+      summary: "Get the details about the current cluster."
+      description: "Get the details of the currently configured cluster without refreshing it."
+      tags:
+        - "cluster api"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/clusterInfo"
+              
+components:
+  parameters:
+    sourcePeerId:
+      description: The Uuid of the source node.
+      name: sourcePeerId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/nodeId"
+    targetPeerId:
+      description: The Uuid of the target node.
+      name: targetPeerId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/nodeId"
+  schemas:
+    nodeId:
+      type: string
+      maxLength: 36
+      minLength: 36
+      description: "The Uuid assigned to a node that identifies the node in the cluster uniquely."
+    partition:
+      type: string
+      description: "The output of the iptables drop command."
+    rules:
+      type: string
+      description: "The output of the iptables command."
+    heal:
+      type: string
+      description: "The output of the iptables reset command."
+    restore:
+      type: string
+      description: "The output of the iptables flush command."
+    partitionError:
+      type: string
+      description: "An error occurred when handling the partition request."
+    loadCluster:
+      type: array
+      items:
+        type: object
+        properties:
+          uuid:
+            $ref : "#/components/schemas/nodeId"
+          address:
+            type: string
+      description: "A list of mappings between the Uuids and peer addresses inside the cluster."
+    clusterInfo:
+      type: array
+      items:
+        $ref : "#/components/schemas/nodeId"
+      description: "A list of node ids within the cluster."

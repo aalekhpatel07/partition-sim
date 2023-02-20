@@ -35,3 +35,14 @@ services:
       - CONSUL_ADDR=consul
     cap_add:
       - NET_ADMIN
+  test-supervisor-docs:
+    image: test-supervisor-docs
+    build:
+      context: .
+      dockerfile: docker/test-supervisor-docs.Dockerfile
+    ports:
+      - "8080:8080" # The supervisor's Swagger UI.
+    depends_on:
+      - test-supervisor
+    environment:
+      - SWAGGER_JSON=/swagger.yaml
