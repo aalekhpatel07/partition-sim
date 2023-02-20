@@ -11,11 +11,8 @@ use axum::{
 };
 use clap::Parser;
 use std::env::var;
+use tower_http::cors::{Any, CorsLayer};
 use uuid::Uuid;
-use tower_http::cors::{
-    Any, 
-    CorsLayer
-};
 
 #[derive(Parser)]
 pub struct Args {
@@ -71,10 +68,7 @@ pub async fn main() {
             "/partition/:peer_id/:target_peer_id",
             post(partition_api::partition),
         )
-        .route(
-            "/heal/:peer_id/:target_peer_id",
-            post(partition_api::heal),
-        )
+        .route("/heal/:peer_id/:target_peer_id", post(partition_api::heal))
         .route("/rules/:peer_id", get(partition_api::rules))
         .route("/restore", get(partition_api::restore))
         .route("/load_cluster", get(cluster_api::load_cluster))
@@ -93,16 +87,15 @@ pub async fn main() {
 }
 
 mod cluster_api {
-    use serde::{Serialize, Deserialize};
     use super::*;
-    
+    use serde::{Deserialize, Serialize};
+
     #[axum_macros::debug_handler]
     pub async fn get_cluster(
-        State(state): State<SharedState>
+        State(state): State<SharedState>,
     ) -> partition_sim::Result<Json<Vec<String>>> {
         let guard = state.lock().await;
-        let peer_ids = 
-            guard
+        let peer_ids = guard
             .supervisor
             .get_peer_ids()
             .iter()
