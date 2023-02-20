@@ -12,6 +12,10 @@ use axum::{
 use clap::Parser;
 use std::env::var;
 use uuid::Uuid;
+use tower_http::cors::{
+    Any, 
+    CorsLayer
+};
 
 #[derive(Parser)]
 pub struct Args {
@@ -50,7 +54,12 @@ pub async fn main() {
 
     let state = Arc::new(Mutex::new(AppState::new(Supervisor::default())));
 
-    let app = Router::new()
+    let cors = CorsLayer::new()
+        .allow_methods(Any)
+        .allow_headers(Any)
+        .allow_origin(Any);
+
+    let api_routes = Router::new()
         .route(
             "/health",
             get(|| async {
@@ -59,18 +68,21 @@ pub async fn main() {
             }),
         )
         .route(
-            "/api/v1/partition/:peer_id/:target_peer_id",
+            "/partition/:peer_id/:target_peer_id",
             post(partition_api::partition),
         )
         .route(
-            "/api/v1/heal/:peer_id/:target_peer_id",
+            "/heal/:peer_id/:target_peer_id",
             post(partition_api::heal),
         )
-        .route("/api/v1/rules/:peer_id", get(partition_api::rules))
-        .route("/api/v1/restore", get(partition_api::restore))
-        .route("/api/v1/load_cluster", post(cluster_api::load_cluster))
-        .route("/api/v1/ls/:peer_id", get(test_api::ls))
+        .route("/rules/:peer_id", get(partition_api::rules))
+        .route("/restore", get(partition_api::restore))
+        .route("/load_cluster", get(cluster_api::load_cluster))
+        .route("/cluster", get(cluster_api::get_cluster))
+        .layer(cors)
         .with_state(state);
+
+    let app = Router::new().nest("/api/v1", api_routes);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], args.port));
     tracing::info!("Listening on {}", addr);
@@ -80,33 +92,35 @@ pub async fn main() {
         .unwrap();
 }
 
-mod test_api {
-    use super::*;
-    use axum_macros;
-    use axum::extract::Path;
-
-    #[axum_macros::debug_handler]
-    pub async fn ls(
-        Path(path): Path<String>,
-        State(state): State<SharedState>
-    ) -> partition_sim::Result<String> {
-        let source_peer_id =
-            Uuid::parse_str(&path).map_err(partition_sim::Error::UuidParseError)?;
-        let mut guard = state.lock().await;
-        let output = guard.supervisor.execute(source_peer_id, partition_sim::commands::FsCommands::Ls).await?;
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    }
-}
-
 mod cluster_api {
-    use std::{collections::HashMap, net::IpAddr};
-
+    use serde::{Serialize, Deserialize};
     use super::*;
+    
+    #[axum_macros::debug_handler]
+    pub async fn get_cluster(
+        State(state): State<SharedState>
+    ) -> partition_sim::Result<Json<Vec<String>>> {
+        let guard = state.lock().await;
+        let peer_ids = 
+            guard
+            .supervisor
+            .get_peer_ids()
+            .iter()
+            .map(|peer| peer.to_string())
+            .collect::<Vec<_>>();
+        Ok(peer_ids.into())
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub struct PeerInfo {
+        pub uuid: String,
+        pub address: String,
+    }
 
     #[axum_macros::debug_handler]
     pub async fn load_cluster(
         State(state): State<SharedState>,
-    ) -> partition_sim::Result<Json<HashMap<String, IpAddr>>> {
+    ) -> partition_sim::Result<Json<Vec<PeerInfo>>> {
         tracing::debug!("load_cluster: {:?}", state);
         let mut guard = state.lock().await;
 
@@ -146,7 +160,14 @@ mod cluster_api {
                         .ip_addr,
                 );
             }
-            Ok(hmap.into())
+            let mut to_output = Vec::new();
+            for (node_uuid, node_address) in hmap.iter() {
+                to_output.push(PeerInfo {
+                    uuid: node_uuid.clone(),
+                    address: node_address.to_string(),
+                });
+            }
+            Ok(to_output.into())
         } else {
             Err(partition_sim::Error::Other("Failed to load cluster".into()))
         }
